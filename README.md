@@ -69,16 +69,15 @@ This repo is a portfolio project designed to mirror a modern fintech “streamin
 ## Project Milestones (Changelog)
 
 ### Milestone 0: Repo skeleton + proto contracts
-- [ ] Add `analytics.proto`
-- [ ] gRPC service boots
+- [x] Add `analytics.proto`
+- [x] gRPC service boots
 
-### Milestone 1: gRPC streaming
-- [ ] MarketDataSimulator generates ticks
-- [ ] AnalyticsService streams ticks
+### Milestone 1: WebSocket Gateway
+- [x] WebSocket endpoint: `/ws/marketdata`
+- [x] gRPC → WebSocket bridge (StreamTicks fan-out as JSON)
+- [x] Per-client subscriptions: subscribe/unsubscribe/set_symbols
+- [x] Verified delivery + filtering using `wscat`
 
-### Milestone 2: WebSocket gateway
-- [ ] Subscribe/unsubscribe protocol
-- [ ] Bridge gRPC → WS
 
 ### Milestone 3: React dashboard
 - [ ] Live watchlist table

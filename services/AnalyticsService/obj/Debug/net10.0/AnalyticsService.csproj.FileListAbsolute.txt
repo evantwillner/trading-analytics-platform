@@ -37,3 +37,4 @@
 /Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/AnalyticsService/obj/Debug/net10.0/ref/AnalyticsService.dll
 /Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/AnalyticsService/bin/Debug/net10.0/Grpc.AspNetCore.Server.Reflection.dll
 /Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/AnalyticsService/bin/Debug/net10.0/Grpc.Reflection.dll
+/Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/AnalyticsService/obj/Debug/net10.0/AnalyticsService.sourcelink.json

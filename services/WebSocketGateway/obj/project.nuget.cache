@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "eiHE+sFeEdo=",
+  "success": true,
+  "projectFilePath": "/Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/WebSocketGateway/WebSocketGateway.csproj",
+  "expectedPackageFiles": [
+    "/Users/evanwillner/.nuget/packages/google.protobuf/3.33.5/google.protobuf.3.33.5.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/grpc.core.api/2.76.0/grpc.core.api.2.76.0.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/grpc.net.client/2.76.0/grpc.net.client.2.76.0.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/grpc.net.common/2.76.0/grpc.net.common.2.76.0.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/grpc.tools/2.76.0/grpc.tools.2.76.0.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/microsoft.aspnetcore.openapi/10.0.1/microsoft.aspnetcore.openapi.10.0.1.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/microsoft.openapi/2.0.0/microsoft.openapi.2.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

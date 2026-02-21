@@ -4,7 +4,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddGrpc();
-builder.Services.AddGrpcReflection();   // Enables grpcurl
 
 var app = builder.Build();
 
