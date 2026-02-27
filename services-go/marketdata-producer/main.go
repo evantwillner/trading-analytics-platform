@@ -12,14 +12,13 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-// Tick is the message we publish to Kafka.
-// In Go, "struct" is like a simple data class in C# (no inheritance).
+// Message published to Kafka.
 type Tick struct {
-	Type     string  `json:"type"`      // always "tick"
-	Symbol   string  `json:"symbol"`    // e.g. AAPL
-	TsUnixMs int64   `json:"tsUnixMs"`  // milliseconds since epoch
-	Price    float64 `json:"price"`     // price
-	Size     int64   `json:"size"`      // trade size/volume
+	Type     string  `json:"type"`     // always "tick"
+	Symbol   string  `json:"symbol"`   // e.g. AAPL
+	TsUnixMs int64   `json:"tsUnixMs"` // milliseconds since epoch
+	Price    float64 `json:"price"`    // price
+	Size     int64   `json:"size"`     // trade size/volume
 }
 
 func main() {
@@ -28,9 +27,6 @@ func main() {
 	broker := "localhost:9092"
 	topic := "ticks.v1"
 
-	// ---- Kafka writer ----
-	// kafka.Writer is a producer abstraction.
-	// It batches behind the scenes and handles connections.
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:  []string{broker},
 		Topic:    topic,
@@ -50,9 +46,6 @@ func main() {
 		fmt.Println("\nCtrl-C received. Shutting down producer...")
 		cancel()
 	}()
-
-	// Seed randomness so it doesn't generate the same sequence each run.
-	rand.Seed(time.Now().UnixNano())
 
 	symbols := []string{"AAPL", "MSFT", "TSLA", "NVDA", "AMZN"}
 
@@ -94,7 +87,7 @@ func main() {
 				Value: bytes,
 			}
 
-			// WriteMessages sends one or more messages. 
+			// WriteMessages sends one or more messages.
 			// ctx here allows cancellation if shutting down.
 			if err := writer.WriteMessages(ctx, msg); err != nil {
 				fmt.Println("kafka write error:", err)

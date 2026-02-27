@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "/zH3Bc34LeM=",
+  "dgSpecHash": "/xiD4T6k/Y4=",
   "success": true,
   "projectFilePath": "/Users/evanwillner/Desktop/Projects/trading-analytics-platform/services/AnalyticsService/AnalyticsService.csproj",
   "expectedPackageFiles": [
+    "/Users/evanwillner/.nuget/packages/confluent.kafka/2.13.1/confluent.kafka.2.13.1.nupkg.sha512",
     "/Users/evanwillner/.nuget/packages/google.protobuf/3.31.1/google.protobuf.3.31.1.nupkg.sha512",
     "/Users/evanwillner/.nuget/packages/grpc.aspnetcore/2.64.0/grpc.aspnetcore.2.64.0.nupkg.sha512",
     "/Users/evanwillner/.nuget/packages/grpc.aspnetcore.server/2.76.0/grpc.aspnetcore.server.2.76.0.nupkg.sha512",
@@ -14,7 +15,8 @@
     "/Users/evanwillner/.nuget/packages/grpc.net.clientfactory/2.64.0/grpc.net.clientfactory.2.64.0.nupkg.sha512",
     "/Users/evanwillner/.nuget/packages/grpc.net.common/2.76.0/grpc.net.common.2.76.0.nupkg.sha512",
     "/Users/evanwillner/.nuget/packages/grpc.reflection/2.76.0/grpc.reflection.2.76.0.nupkg.sha512",
-    "/Users/evanwillner/.nuget/packages/grpc.tools/2.64.0/grpc.tools.2.64.0.nupkg.sha512"
+    "/Users/evanwillner/.nuget/packages/grpc.tools/2.64.0/grpc.tools.2.64.0.nupkg.sha512",
+    "/Users/evanwillner/.nuget/packages/librdkafka.redist/2.13.0/librdkafka.redist.2.13.0.nupkg.sha512"
   ],
   "logs": []
 }

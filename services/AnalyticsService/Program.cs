@@ -4,6 +4,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddGrpc();
+builder.Services.AddSingleton<TickStore>();
+builder.Services.AddHostedService<KafkaTickConsumer>();
 
 var app = builder.Build();
 
