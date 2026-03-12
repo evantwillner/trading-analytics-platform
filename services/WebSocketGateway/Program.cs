@@ -1,19 +1,19 @@
+using System.Text;
+using System.Text.Json;
 using Grpc.Net.Client;
 using TradingAnalytics.Proto.Analytics.V1;
 using WebSocketGateway.Streaming;
 using WebSocketGateway.WebSockets;
-using System.Text;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Config: where AnalyticsService is running ---
-// IMPORTANT: Use http:// for h2c (plaintext) since you tested grpcurl with -plaintext.
+// Where AnalyticsService is running.
+// Use http:// because your local gRPC service is running plaintext/h2c on localhost:5226.
 var analyticsGrpcAddress = builder.Configuration["AnalyticsGrpcAddress"] ?? "http://localhost:5226";
 
-// --- DI registrations ---
-builder.Services.AddSingleton(new ClientConnectionManager());
-builder.Services.AddSingleton<MarketDataBroadcaster>();
+// Dependency Injection registrations
+builder.Services.AddSingleton<ClientConnectionManager>();
+builder.Services.AddSingleton<GrpcToWebSocketPump>();
 
 builder.Services.AddSingleton(sp =>
 {
@@ -21,18 +21,16 @@ builder.Services.AddSingleton(sp =>
     return new AnalyticsService.AnalyticsServiceClient(channel);
 });
 
-builder.Services.AddHostedService<BridgeHostedService>();
-
 var app = builder.Build();
 
 app.UseWebSockets();
 
 app.MapGet("/", () => "WebSocketGateway is running");
 
-// WebSocket endpoint for market data
 app.Map("/ws/marketdata", async context =>
 {
     var connections = context.RequestServices.GetRequiredService<ClientConnectionManager>();
+    var pump = context.RequestServices.GetRequiredService<GrpcToWebSocketPump>();
 
     if (!context.WebSockets.IsWebSocketRequest)
     {
@@ -41,85 +39,84 @@ app.Map("/ws/marketdata", async context =>
     }
 
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
-    var clientId = connections.Add(socket);
-    Console.WriteLine($"WS client connected: {clientId}");
+    var session = connections.Add(socket);
+
+    Console.WriteLine($"WS client connected: {session.ClientId}");
 
     var buffer = new byte[1024 * 8];
 
-    while (socket.State == System.Net.WebSockets.WebSocketState.Open)
+    try
     {
-        var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
-
-        if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Close)
-            break;
-
-        if (result.MessageType != System.Net.WebSockets.WebSocketMessageType.Text)
-            continue;
-
-        var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-
-        SubscriptionMessage? msg = null;
-        try
+        while (socket.State == System.Net.WebSockets.WebSocketState.Open)
         {
-            msg = JsonSerializer.Deserialize<SubscriptionMessage>(json);
-        }
-        catch
-        {
-            // Ignore invalid JSON for now.
-            continue;
-        }
+            var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
 
-        if (msg?.Type is null || msg.Symbols is null)
-            continue;
-
-        switch (msg.Type.Trim().ToLowerInvariant())
-        {
-            case "subscribe":
-                connections.Subscribe(clientId, msg.Symbols);
+            if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Close)
                 break;
 
-            case "unsubscribe":
-                connections.Unsubscribe(clientId, msg.Symbols);
-                break;
+            if (result.MessageType != System.Net.WebSockets.WebSocketMessageType.Text)
+                continue;
 
-            case "set_symbols":
-                connections.SetSymbols(clientId, msg.Symbols);
-                break;
+            var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
 
-            default:
-                // unknown message type; ignore
-                break;
+            SubscriptionMessage? msg;
+            try
+            {
+                msg = JsonSerializer.Deserialize<SubscriptionMessage>(json);
+            }
+            catch
+            {
+                // Ignore malformed JSON for now
+                continue;
+            }
+
+            if (msg?.Type is null || msg.Symbols is null)
+                continue;
+
+            var type = msg.Type.Trim().ToLowerInvariant();
+
+            if (type == "subscribe")
+            {
+                foreach (var s in msg.Symbols)
+                {
+                    var sym = s?.Trim();
+                    if (!string.IsNullOrWhiteSpace(sym))
+                        session.Symbols.Add(sym);
+                }
+
+                await pump.StartOrRestartAsync(session, context.RequestAborted);
+            }
+            else if (type == "unsubscribe")
+            {
+                foreach (var s in msg.Symbols)
+                {
+                    var sym = s?.Trim();
+                    if (!string.IsNullOrWhiteSpace(sym))
+                        session.Symbols.Remove(sym);
+                }
+
+                await pump.StartOrRestartAsync(session, context.RequestAborted);
+            }
+            else if (type == "set_symbols")
+            {
+                session.Symbols.Clear();
+
+                foreach (var s in msg.Symbols)
+                {
+                    var sym = s?.Trim();
+                    if (!string.IsNullOrWhiteSpace(sym))
+                        session.Symbols.Add(sym);
+                }
+
+                await pump.StartOrRestartAsync(session, context.RequestAborted);
+            }
         }
     }
-
-
-    connections.Remove(clientId);
-    Console.WriteLine($"WS client disconnected: {clientId}");
+    finally
+    {
+        connections.Remove(session.ClientId);
+        Console.WriteLine($"WS client disconnected: {session.ClientId}");
+    }
 });
 
 app.Run();
-
-
-// Hosted service wrapper that runs the bridge in the background
-public class BridgeHostedService : BackgroundService
-{
-    private readonly IServiceProvider _sp;
-
-    public BridgeHostedService(IServiceProvider sp)
-    {
-        _sp = sp;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        // Resolve bridge dependencies from DI
-        using var scope = _sp.CreateScope();
-        var client = scope.ServiceProvider.GetRequiredService<AnalyticsService.AnalyticsServiceClient>();
-        var broadcaster = scope.ServiceProvider.GetRequiredService<MarketDataBroadcaster>();
-
-        var bridge = new AnalyticsStreamBridge(client, broadcaster);
-
-        Console.WriteLine("Starting Analytics ➜ WS bridge...");
-        await bridge.RunAsync(stoppingToken);
-    }
-}
