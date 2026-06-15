@@ -1,0 +1,14 @@
+# C# build artifacts
+bin/
+obj/
+
+# Node
+node_modules/
+
+# Mac
+.DS_Store
+
+# Rider/VS
+.idea/
+.vs/
+*.user
