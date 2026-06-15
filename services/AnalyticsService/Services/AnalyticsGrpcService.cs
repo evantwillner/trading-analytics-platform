@@ -45,8 +45,8 @@ public class AnalyticsGrpcService : TradingAnalytics.Proto.Analytics.V1.Analytic
         // If client didn't specify symbols, stream everything we receive.
         var symbols = request.Symbols?.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // We need to write ticks to the gRPC stream whenever TickStore receives one.
-        // TickReceived is an event; our handler will push updates to this client.
+        // Need to write ticks to the gRPC stream whenever TickStore receives one
+        // TickReceived is an event;  handler will push updates to this client
         void Handler(AnalyticsService.Models.Tick t)
         {
             if (symbols is not null && symbols.Count > 0 && !symbols.Contains(t.Symbol))

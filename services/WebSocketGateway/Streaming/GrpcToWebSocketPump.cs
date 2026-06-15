@@ -19,9 +19,11 @@ public class GrpcToWebSocketPump
         session.GrpcCts?.Cancel();
         session.GrpcCts?.Dispose();
 
-        // If client has no subscribed symbols, no gRPC stream should run
         if (session.Symbols.Count == 0)
+        {
+            Console.WriteLine($"No symbols for client {session.ClientId}; not starting gRPC stream.");
             return Task.CompletedTask;
+        }
 
         session.GrpcCts = CancellationTokenSource.CreateLinkedTokenSource(serverCt);
         var ct = session.GrpcCts.Token;
@@ -37,12 +39,17 @@ public class GrpcToWebSocketPump
                 var request = new StreamTicksRequest();
                 request.Symbols.AddRange(session.Symbols);
 
+                Console.WriteLine($"Starting gRPC stream for client {session.ClientId} with symbols: {string.Join(",", session.Symbols)}");
+
                 using var call = _grpcClient.StreamTicks(request, cancellationToken: ct);
 
                 while (await call.ResponseStream.MoveNext(ct))
                 {
+                    
                     var tick = call.ResponseStream.Current;
                     await channel.Writer.WriteAsync(tick, ct);
+
+                    Console.WriteLine($"Received tick from gRPC for client {session.ClientId}: {tick.Symbol} {tick.Price}");
                 }
             }
             catch (OperationCanceledException)
@@ -78,6 +85,7 @@ public class GrpcToWebSocketPump
                         size = tick.Size
                     };
 
+                    Console.WriteLine($"Sending tick to WS client {session.ClientId}: {tick.Symbol} {tick.Price} {tick.Size}");
                     await WebSocketSender.SendJsonAsync(session.Socket, payload, ct);
                 }
             }

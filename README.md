@@ -1,114 +1,154 @@
-# Real-Time Trading Analytics Platform (C# / gRPC / WebSockets / React / Electron)
 
-This repo is a portfolio project designed to mirror a modern fintech “streaming analytics platform” architecture:
-- Internal service streaming via **gRPC**
-- UI delivery via **WebSockets**
-- Real-time dashboard in **React**
-- Desktop container via **Electron**
-- A supporting **Ledger Service** for correctness (positions, fills, PnL)
+Real-Time Trading Analytics Platform
 
----
+A real-time trading analytics platform demonstrating modern fintech architecture patterns including gRPC streaming, WebSocket fan-out, Kafka-based event pipelines, Go services, and cloud-ready infrastructure via Terraform.
 
-## Architecture (High Level)
+This project is built incrementally to mirror production trading systems.
 
-**MarketDataSimulator** → emits ticks/trades (fake exchange feed)  
-**AnalyticsService (gRPC)** → computes metrics + serves server-streaming feeds  
-**WebSocketGateway** → bridges gRPC streams → WebSocket clients  
-**Dashboard (React)** → renders live market data + analytics efficiently  
-**Dashboard (Electron)** → desktop container for the same React app  
-**LedgerService (gRPC)** → supporting service for financial correctness (positions/PnL)
+Architecture Overview
 
----
+High-level data flow:
 
-## Services & Apps
+Go Market Data Producer
+→ Kafka topic (ticks.v1)
+→ C# AnalyticsService (Kafka consumer + gRPC server)
+→ WebSocket Gateway (Go or C#)
+→ React / Electron dashboard
 
-### Backend
-- `services/MarketDataSimulator`  
-  Generates deterministic fake tick/trade events for symbols.
+Responsibilities:
+  Go Producer
+    - Generates and publishes tick data to Kafka.
 
-- `services/AnalyticsService` (gRPC)  
-  Owns analytics computations and exposes:
-  - Unary snapshot endpoints
-  - Server-streaming endpoints for real-time feeds
+  Kafka (Redpanda locally)
+    - Acts as the streaming backbone for event-driven data flow.
 
-- `services/WebSocketGateway`  
-  WebSocket server that:
-  - Accepts client subscriptions (symbols)
-  - Subscribes to internal gRPC streams
-  - Pushes updates to clients (JSON messages)
+  C# AnalyticsService
+    - Consumes Kafka messages and exposes strongly-typed gRPC endpoints, including server-streaming APIs.
 
-- `services/LedgerService`  
-  Supporting system-of-record style service:
-  - Fills, positions, PnL snapshots
-  - Queried by analytics for “position-aware” metrics
+  WebSocket Gateway
+    - Bridges gRPC streaming data to browser/Electron clients via WebSockets with per-client subscription filtering.
 
-### Frontend
-- `apps/dashboard-web`  
-  React + TypeScript real-time dashboard.
+  React / Electron (planned)
+    - Renders live streaming market data.
 
-- `apps/dashboard-electron`  
-  Electron wrapper around the dashboard.
+Technology Stack:
+Backend
 
----
+  - .NET 8 (C#) — gRPC services
+  - Go — high-concurrency streaming services
+  - Kafka (Redpanda locally) — event backbone
+  - WebSockets — real-time UI delivery
 
-## Streaming Design Notes (Important)
+Infrastructure
 
-### Why gRPC internally + WebSockets to the UI?
-- gRPC is strong for service-to-service communication, typed contracts, streaming.
-- Browsers/Electron UIs commonly consume streaming data via WebSockets.
-- The WS gateway is a realistic “edge fan-out” pattern.
+  - Docker Compose — local development stack
+  - Terraform (planned) — AWS deployment
 
-### Performance approach (UI)
-- Messages can be extremely frequent.
-- The UI should not re-render on every message.
-- Buffer updates and apply them on a fixed cadence (e.g. 30–60 FPS).
-- Large tables should be virtualized.
+  Target AWS services:
+   - ECS Fargate
+   - RDS Postgres
+   - MSK (Kafka)
+   - CloudWatch
 
----
+    Application Load Balancer
 
-## Project Milestones (Changelog)
+Repository Structure:
 
-### Milestone 0: Repo skeleton + proto contracts
-- [x] Add `analytics.proto`
-- [x] gRPC service boots
+trading-analytics-platform/
+  services/
+    AnalyticsService/ (C# gRPC service)
 
-### Milestone 1: WebSocket Gateway
-- [x] WebSocket endpoint: `/ws/marketdata`
-- [x] gRPC → WebSocket bridge (StreamTicks fan-out as JSON)
-- [x] Per-client subscriptions: subscribe/unsubscribe/set_symbols
-- [x] Verified delivery + filtering using `wscat`
+  services-go/
+    marketdata-producer/ (Go Kafka producer)
+    websocket-gateway/ (Go gRPC → WebSocket bridge)
 
+  proto/
+    analytics.proto (gRPC contract)
 
-### Milestone 3: React dashboard
-- [ ] Live watchlist table
-- [ ] Throttled rendering + buffering
+  infra/
+    docker-compose.yml (Kafka + UI)
 
-### Milestone 4: Electron container
-- [ ] Desktop packaging
-- [ ] Same WS feed
+  apps/ (planned)
+    dashboard-web
+    dashboard-electron
 
-### Milestone 5: Ledger integration
-- [ ] LedgerService positions/PnL
-- [ ] Analytics calls ledger for position-aware analytics
+Start Kafka (Redpanda)
 
----
+From repository root: docker compose -f infra/docker-compose.yml up -d
 
-# Helpful Notes
+Kafka broker: localhost:9092
+Kafka UI: http://localhost:8080
 
-1 - You can use grpcurl to validate network & streaming behavior without the need of a client
+Create Topic:
+```
+docker exec -it redpanda rpk topic create ticks.v1
+docker exec -it redpanda rpk topic list
+```
+Run C# Analytics Service:
+```
+dotnet run --project services/AnalyticsService
+```
+Exposes:
 
-grpcurl -plaintext \
-  -import-path ./proto \
-  -proto analytics.proto \
-  -d '{"symbol":"AAPL"}' \
-  localhost:5226 \
-  analytics.v1.AnalyticsService/GetSnapshot
+GetSnapshot (unary gRPC)
 
-grpcurl -plaintext \
-  -import-path ./proto \
-  -proto analytics.proto \
-  -d '{"symbols":["AAPL","MSFT"]}' \
-  localhost:5226 \
-  analytics.v1.AnalyticsService/StreamTicks
+StreamTicks (server-streaming gRPC)
 
+Run Go Market Data Producer (skeleton)
+cd services-go/marketdata-producer
+go run .
+Core Concepts Demonstrated
+- Proto-first API design
+- Strongly-typed gRPC contracts
+- Server-streaming RPC
+- Event-driven architecture via Kafka
+- WebSocket fan-out with per-client subscription state
+- Multi-language backend architecture (C# + Go)
+- Cloud-ready infrastructure planning (Terraform + AWS)
 
+Milestones:
+
+Phase 0 – gRPC Foundation
+- Define analytics.proto
+- Implement C# gRPC service
+- Implement server-streaming tick feed
+
+Phase 1 – Kafka + Go Foundation
+- Add local Kafka-compatible broker (Redpanda)
+- Create ticks.v1 topic
+- Add Go service skeleton
+
+Phase 2 – Go Producer
+- Publish tick events to Kafka
+- Validate messages via Kafka UI
+
+Phase 3 – C# Kafka Consumer
+- Replace fake tick generator with Kafka consumer
+- Maintain latest tick state
+- Continue exposing gRPC stream
+
+Phase 4 – Go WebSocket Gateway
+- gRPC client in Go
+- Per-client subscription filtering
+- High-concurrency WebSocket handling
+
+Phase 5 – React + Electron
+- Real-time watchlist UI
+- Virtualized table
+- Desktop packaging
+
+Phase 6 – AWS Deployment (Terraform)
+- ECS Fargate
+- RDS Postgres
+- MSK
+- CloudWatch
+- ALB
+
+Project Goal:
+
+This project is designed to demonstrate real-time distributed system design using technologies commonly found in fintech environments. It emphasizes:
+
+- Streaming data pipelines
+- Strong service boundaries
+- Concurrency models in both C# and Go
+- Infrastructure-as-code deployment readiness

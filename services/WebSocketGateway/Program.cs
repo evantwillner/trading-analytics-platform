@@ -59,14 +59,25 @@ app.Map("/ws/marketdata", async context =>
 
             var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
 
+            Console.WriteLine($"Received WS message from {session.ClientId}: {json}");
+
             SubscriptionMessage? msg;
             try
             {
-                msg = JsonSerializer.Deserialize<SubscriptionMessage>(json);
+                msg = JsonSerializer.Deserialize<SubscriptionMessage>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                
+                Console.WriteLine(
+                    msg is null
+                        ? "Deserialized message is null"
+                        : $"Deserialized message => Type: '{msg.Type}', Symbols null? {msg.Symbols is null}, Count: {msg.Symbols?.Length ?? 0}"
+                );
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore malformed JSON for now
+                Console.WriteLine($"Failed to deserialize WS message: {ex.Message}");
                 continue;
             }
 
@@ -85,6 +96,7 @@ app.Map("/ws/marketdata", async context =>
                 }
 
                 await pump.StartOrRestartAsync(session, context.RequestAborted);
+                Console.WriteLine($"Client {session.ClientId} subscribed. Current symbols: {string.Join(",", session.Symbols)}");
             }
             else if (type == "unsubscribe")
             {
@@ -96,9 +108,12 @@ app.Map("/ws/marketdata", async context =>
                 }
 
                 await pump.StartOrRestartAsync(session, context.RequestAborted);
+                Console.WriteLine($"Client {session.ClientId} unsubscribed. Current symbols: {string.Join(",", session.Symbols)}");
             }
             else if (type == "set_symbols")
             {
+                Console.WriteLine("Entered set_symbols branch");
+                
                 session.Symbols.Clear();
 
                 foreach (var s in msg.Symbols)
@@ -109,6 +124,7 @@ app.Map("/ws/marketdata", async context =>
                 }
 
                 await pump.StartOrRestartAsync(session, context.RequestAborted);
+                Console.WriteLine($"Client {session.ClientId} set symbols. Current symbols: {string.Join(",", session.Symbols)}");
             }
         }
     }
