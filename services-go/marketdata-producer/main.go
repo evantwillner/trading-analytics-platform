@@ -20,9 +20,16 @@ type Tick struct {
 	Size     int64   `json:"size"`
 }
 
+func getEnv(key, fallback string) string {
+	if val, ok := os.LookupEnv(key); ok && val != "" {
+		return val
+	}
+	return fallback
+}
+
 func main() {
-	broker := "localhost:9092"
-	topic := "ticks.v1"
+	broker := getEnv("KAFKA_BROKER", "localhost:9092")
+	topic := getEnv("KAFKA_TOPIC", "ticks.v1")
 
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:  []string{broker},
@@ -54,7 +61,6 @@ func main() {
 
 	fmt.Printf("Go Kafka producer started. Publishing to %s on %s\n", topic, broker)
 
-	// Emit one tick per symbol every 200ms — clean synchronized feed
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 

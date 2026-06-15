@@ -7,9 +7,8 @@ using WebSocketGateway.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Where AnalyticsService is running.
-// Use http:// because your local gRPC service is running plaintext/h2c on localhost:5226.
-var analyticsGrpcAddress = builder.Configuration["AnalyticsGrpcAddress"] ?? "http://localhost:5226";
+var analyticsGrpcAddress = builder.Configuration["AnalyticsGrpcAddress"]
+    ?? throw new InvalidOperationException("AnalyticsGrpcAddress is not configured.");
 
 // Dependency Injection registrations
 builder.Services.AddSingleton<ClientConnectionManager>();

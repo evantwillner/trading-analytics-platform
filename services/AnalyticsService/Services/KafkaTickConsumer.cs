@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AnalyticsService.Models;
 using Confluent.Kafka;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace AnalyticsService.Services;
@@ -12,25 +13,28 @@ namespace AnalyticsService.Services;
 public class KafkaTickConsumer : BackgroundService
 {
     private readonly TickStore _tickStore;
+    private readonly string _bootstrapServers;
+    private readonly string _topic;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public KafkaTickConsumer(TickStore tickStore)
+    public KafkaTickConsumer(TickStore tickStore, IConfiguration configuration)
     {
         _tickStore = tickStore;
+        _bootstrapServers = configuration["KafkaBootstrapServers"] ?? "localhost:9092";
+        _topic = configuration["KafkaTopic"] ?? "ticks.v1";
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Run the consumer loop
         return Task.Run(() =>
         {
             var config = new ConsumerConfig
             {
-                BootstrapServers = "localhost:9092",
+                BootstrapServers = _bootstrapServers,
                 GroupId = "analytics-service",
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 EnableAutoCommit = true
@@ -38,7 +42,7 @@ public class KafkaTickConsumer : BackgroundService
 
             using var consumer = new ConsumerBuilder<string, string>(config).Build();
 
-            consumer.Subscribe("ticks.v1");
+            consumer.Subscribe(_topic);
 
             try
             {
@@ -46,7 +50,6 @@ public class KafkaTickConsumer : BackgroundService
                 {
                     try
                     {
-                        // Blocks until a message arrives or cancellation occurs
                         var result = consumer.Consume(stoppingToken);
 
                         if (result?.Message?.Value is null)
@@ -54,7 +57,6 @@ public class KafkaTickConsumer : BackgroundService
 
                         var tick = JsonSerializer.Deserialize<Tick>(result.Message.Value, JsonOptions);
 
-                        // Guard malformed/unknown schema
                         if (tick is null || string.IsNullOrWhiteSpace(tick.Symbol))
                             continue;
 
@@ -62,14 +64,13 @@ public class KafkaTickConsumer : BackgroundService
                     }
                     catch (ConsumeException ex)
                     {
-                        // Kafka-level error for a consume operation
                         Console.WriteLine($"Kafka consume error: {ex.Error.Reason}");
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-               
+                // expected on shutdown
             }
             finally
             {
