@@ -1,0 +1,12 @@
+{
+  "name": "dashboard-electron",
+  "version": "1.0.0",
+  "description": "Electron desktop container for Trading Analytics Dashboard",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "<whatever version npm installed>"
+  }
+}
